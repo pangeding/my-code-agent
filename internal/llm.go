@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"strings"
 
 	"github.com/openai/openai-go"
@@ -80,6 +81,7 @@ func (c *LLMClient) Chat(ctx context.Context, messages []openai.ChatCompletionMe
 			if delta.Content != "" {
 				textBuf.WriteString(delta.Content)
 				fmt.Print(delta.Content)
+				os.Stdout.Sync()
 			}
 		}
 
