@@ -104,14 +104,14 @@ func (c *LLMClient) Chat(ctx context.Context, messages []openai.ChatCompletionMe
 
 		// Execute each tool call
 		for _, tc := range toolCalls {
-			slog.Info("tool called", "tool", tc.Function.Name, "args", tc.Function.Arguments)
+			slog.Info("tool called", "tool", tc.Function.Name, "args", tc.Function.Arguments, "tool_call_id", tc.ID)
 
 			args, err := ParseToolArgs(tc.Function.Arguments)
 			if err != nil {
 				slog.Warn("failed to parse tool arguments", "tool", tc.Function.Name, "err", err)
 				result := "failed to parse arguments: " + err.Error()
 				slog.Info("tool result", "tool", tc.Function.Name, "success", false)
-				messages = append(messages, openai.ToolMessage(tc.ID, result))
+				messages = append(messages, openai.ToolMessage(result, tc.ID))
 				continue
 			}
 
@@ -120,13 +120,13 @@ func (c *LLMClient) Chat(ctx context.Context, messages []openai.ChatCompletionMe
 				slog.Warn("unknown tool", "tool", tc.Function.Name)
 				result := "unknown tool: " + tc.Function.Name
 				slog.Info("tool result", "tool", tc.Function.Name, "success", false)
-				messages = append(messages, openai.ToolMessage(tc.ID, result))
+				messages = append(messages, openai.ToolMessage(result, tc.ID))
 				continue
 			}
 
 			result := toolFunc(args)
 			slog.Info("tool result", "tool", tc.Function.Name, "success", result.Success)
-			messages = append(messages, openai.ToolMessage(tc.ID, result.Raw))
+			messages = append(messages, openai.ToolMessage(result.Raw, tc.ID))
 		}
 
 		// Loop back to call LLM again with tool results
