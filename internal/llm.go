@@ -13,13 +13,14 @@ import (
 
 // LLMClient wraps the OpenAI client for chat completions with tool support.
 type LLMClient struct {
-	client openai.Client
-	model  string
-	tools  []openai.ChatCompletionToolParam
+	client      openai.Client
+	model       string
+	tools       []openai.ChatCompletionToolParam
+	confirmFunc ConfirmFunc // 用户确认回调
 }
 
 // NewLLMClient creates a new LLM client.
-func NewLLMClient(baseURL, apiKey, model string, tools []any) *LLMClient {
+func NewLLMClient(baseURL, apiKey, model string, tools []any, confirmFunc ConfirmFunc) *LLMClient {
 	opts := []option.RequestOption{
 		option.WithAPIKey(apiKey),
 		option.WithBaseURL(baseURL),
@@ -29,9 +30,10 @@ func NewLLMClient(baseURL, apiKey, model string, tools []any) *LLMClient {
 	toolParams := convertTools(tools)
 
 	return &LLMClient{
-		client: client,
-		model:  model,
-		tools:  toolParams,
+		client:      client,
+		model:       model,
+		tools:       toolParams,
+		confirmFunc: confirmFunc,
 	}
 }
 
@@ -122,6 +124,11 @@ func (c *LLMClient) Chat(ctx context.Context, messages []openai.ChatCompletionMe
 				slog.Info("tool result", "tool", tc.Function.Name, "success", false)
 				messages = append(messages, openai.ToolMessage(result, tc.ID))
 				continue
+			}
+
+			// 对 bash 工具使用带确认回调的版本
+			if tc.Function.Name == "bash" && c.confirmFunc != nil {
+				toolFunc = GetBashToolFunc(c.confirmFunc)
 			}
 
 			result := toolFunc(args)
